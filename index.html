@@ -1,0 +1,1553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SEAT CHECKER</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- jsPDF CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a, #1e293b, #4f46e5);
+      --card-bg: rgba(15, 23, 42, 0.85);
+      --accent: #8b5cf6;
+      --accent-soft: rgba(139, 92, 246, 0.18);
+      --danger: #f97373;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --border-subtle: rgba(148, 163, 184, 0.45);
+      --seat-available: #ffffff;
+      --seat-occupied: #8b5cf6;
+      --seat-border: rgba(148, 163, 184, 0.4);
+      --shadow-soft: 0 18px 45px rgba(15, 23, 42, 0.7);
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --transition-fast: 160ms ease-out;
+      --transition-med: 220ms ease;
+      --blur-strong: blur(24px);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+        "Inter", "Roboto", sans-serif;
+      min-height: 100vh;
+      background-image: var(--bg-gradient);
+      background-attachment: fixed;
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      padding: 16px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1240px;
+      margin: auto;
+      border-radius: var(--radius-xl);
+      background: radial-gradient(circle at top left, rgba(94, 234, 212, 0.08), transparent 55%),
+                  radial-gradient(circle at bottom right, rgba(129, 140, 248, 0.16), transparent 55%),
+                  rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(28px);
+      box-shadow: var(--shadow-soft);
+      padding: 20px 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    @media (min-width: 768px) {
+      .app {
+        padding: 22px 22px 24px;
+        gap: 18px;
+      }
+    }
+
+    .app-header {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 2.2fr) auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    @media (max-width: 960px) {
+      .app-header {
+        grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr);
+        grid-template-rows: auto auto;
+      }
+      .header-actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+        margin-top: 4px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app-header {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      .header-actions {
+        justify-content: stretch;
+        flex-wrap: wrap;
+      }
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 18px;
+      background: radial-gradient(circle at 20% 20%, #a855f7, #1d4ed8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      font-size: 16px;
+      color: white;
+      box-shadow: 0 12px 32px rgba(79, 70, 229, 0.55);
+    }
+
+    .title-area h1 {
+      font-size: 20px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #e5e7eb;
+      margin-bottom: 2px;
+    }
+
+    .title-area p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-evenly;
+      gap: 8px;
+      padding: 10px 10px;
+      border-radius: var(--radius-lg);
+      background: radial-gradient(circle at top left, rgba(94, 234, 212, 0.14), transparent 60%),
+                  rgba(15, 23, 42, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+    }
+
+    @media (max-width: 640px) {
+      .stats {
+        justify-content: space-between;
+      }
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 78px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .stat-value.accent {
+      color: #a855f7;
+    }
+
+    .header-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      border-radius: 999px;
+      border: 1px solid transparent;
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+        background-color var(--transition-fast), border-color var(--transition-fast),
+        color var(--transition-fast), opacity var(--transition-fast);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #f9fafb;
+      box-shadow: 0 10px 24px rgba(55, 65, 200, 0.65);
+    }
+
+    .btn.primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 30px rgba(79, 70, 229, 0.8);
+    }
+
+    .btn.outline {
+      background: transparent;
+      border-color: rgba(148, 163, 184, 0.7);
+      color: #e5e7eb;
+    }
+
+    .btn.outline:hover {
+      background: rgba(15, 23, 42, 0.8);
+      transform: translateY(-1px);
+    }
+
+    .btn.danger {
+      background: linear-gradient(135deg, #f97373, #ef4444);
+      border-color: transparent;
+      color: #fee2e2;
+      box-shadow: 0 10px 24px rgba(239, 68, 68, 0.6);
+    }
+
+    .btn.small {
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(
+          120deg,
+          rgba(15, 23, 42, 0.9),
+          rgba(15, 23, 42, 0.78)
+        ),
+        var(--accent-soft);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+    }
+
+    .search-area {
+      flex: 1 1 210px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .search-area label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+    }
+
+    .search-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .search-input-wrapper input {
+      flex: 1;
+      min-width: 0;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      padding: 8px 11px;
+      background: rgba(15, 23, 42, 0.85);
+      color: var(--text-main);
+      font-size: 13px;
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast),
+        background-color var(--transition-fast), transform var(--transition-fast);
+    }
+
+    .search-input-wrapper input::placeholder {
+      color: rgba(148, 163, 184, 0.8);
+    }
+
+    .search-input-wrapper input:focus {
+      border-color: #8b5cf6;
+      box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.7);
+      transform: translateY(-0.5px);
+      background: rgba(15, 23, 42, 0.96);
+    }
+
+    .search-input-wrapper input.input-error {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.7);
+    }
+
+    .search-area .hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      opacity: 0.9;
+    }
+
+    .legend {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px dashed rgba(148, 163, 184, 0.6);
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 5px;
+      border: 1px solid var(--seat-border);
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.8);
+    }
+
+    .legend-color.available {
+      background: var(--seat-available);
+    }
+
+    .legend-color.occupied {
+      background: var(--seat-occupied);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(260px, 1.3fr);
+      gap: 18px;
+      min-height: 380px;
+    }
+
+    @media (max-width: 960px) {
+      .layout {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .grid-wrapper {
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      padding: 12px 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    .grid-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px 4px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .grid-header span strong {
+      color: #e5e7eb;
+    }
+
+    .seats-grid {
+      flex: 1;
+      overflow: auto;
+      padding: 4px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(34px, 1fr));
+      gap: 6px;
+      scroll-behavior: smooth;
+    }
+
+    @media (min-width: 900px) {
+      .seats-grid {
+        grid-template-columns: repeat(25, minmax(0, 1fr));
+      }
+    }
+
+    .seat {
+      position: relative;
+      border-radius: 11px;
+      border: 1px solid var(--seat-border);
+      background: radial-gradient(circle at 30% 20%, #ffffff, #e5e7eb);
+      color: #111827;
+      font-size: 11px;
+      font-weight: 600;
+      text-align: center;
+      padding: 6px 0;
+      cursor: pointer;
+      box-shadow: 0 7px 16px rgba(15, 23, 42, 0.35);
+      transition: transform var(--transition-med), box-shadow var(--transition-med),
+        background-color var(--transition-med), border-color var(--transition-med),
+        color var(--transition-med), opacity var(--transition-med),
+        outline-color var(--transition-med);
+      outline: 0 solid transparent;
+      user-select: none;
+    }
+
+    .seat:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.7);
+      border-color: rgba(129, 140, 248, 0.9);
+    }
+
+    .seat:active {
+      transform: translateY(0px) scale(0.99);
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.7);
+    }
+
+    .seat.occupied {
+      background: radial-gradient(circle at 20% 10%, #c4b5fd, #8b5cf6);
+      color: #f9fafb;
+      border-color: rgba(167, 139, 250, 0.9);
+      box-shadow: 0 10px 24px rgba(139, 92, 246, 0.85);
+    }
+
+    .seat.occupied::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.3);
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .seat--highlight {
+      outline: 2px solid #facc15;
+      box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9), 0 0 16px rgba(250, 204, 21, 0.8);
+      transform: translateY(-3px) scale(1.05);
+    }
+
+    .seat--hidden {
+      display: none;
+    }
+
+    .details-panel {
+      background: radial-gradient(circle at top, rgba(129, 140, 248, 0.28), transparent 60%),
+                  rgba(15, 23, 42, 0.96);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(148, 163, 184, 0.6);
+      padding: 14px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.85);
+      min-height: 0;
+      opacity: 1;
+      transform: translateY(0px);
+      transition: opacity var(--transition-med), transform var(--transition-med);
+    }
+
+    @media (max-width: 960px) {
+      .details-panel {
+        min-height: 150px;
+      }
+    }
+
+    .details-panel.hidden {
+      opacity: 0;
+      transform: translateY(6px);
+      pointer-events: none;
+    }
+
+    .details-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .details-title {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .details-title h2 {
+      font-size: 15px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #e5e7eb;
+    }
+
+    .details-title p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(148, 163, 184, 0.8);
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-muted);
+    }
+
+    .badge-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: #22c55e;
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.9);
+    }
+
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+    }
+
+    .detail-row strong {
+      color: #e5e7eb;
+    }
+
+    .status-pill {
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid;
+    }
+
+    .status-pill.available {
+      border-color: rgba(52, 211, 153, 0.85);
+      background: rgba(22, 163, 74, 0.15);
+      color: #bbf7d0;
+    }
+
+    .status-pill.occupied {
+      border-color: rgba(248, 113, 113, 0.9);
+      background: rgba(248, 113, 113, 0.15);
+      color: #fecaca;
+    }
+
+    .details-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .details-footer {
+      font-size: 11px;
+      color: var(--text-muted);
+      border-top: 1px dashed rgba(148, 163, 184, 0.6);
+      padding-top: 7px;
+      margin-top: 4px;
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .details-footer span.highlight {
+      color: #a855f7;
+    }
+
+    .details-footer small {
+      opacity: 0.92;
+    }
+
+    /* Modal */
+    .modal {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 40;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity var(--transition-med);
+    }
+
+    .modal.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top, rgba(148, 163, 184, 0.36), transparent 55%),
+                  rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+    }
+
+    .modal-content {
+      position: relative;
+      z-index: 1;
+      width: 92%;
+      max-width: 360px;
+      border-radius: 20px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      padding: 16px 16px 14px;
+      box-shadow: 0 22px 60px rgba(15, 23, 42, 0.9);
+      transform: translateY(10px);
+      transition: transform var(--transition-med);
+    }
+
+    .modal.visible .modal-content {
+      transform: translateY(0);
+    }
+
+    .modal-content h2 {
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .modal-content p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .note {
+      font-size: 11px;
+      color: #fbbf24;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .note-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: #fbbf24;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo">SC</div>
+        <div class="title-area">
+          <h1>SEAT CHECKER</h1>
+          <p>Instant visibility into 500 seats — lock &amp; unlock in real time.</p>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">Total Seats</span>
+          <span class="stat-value" id="totalSeats">500</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Occupied</span>
+          <span class="stat-value accent" id="occupiedCount">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Available</span>
+          <span class="stat-value" id="availableCount">500</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn primary" id="downloadPdfBtn">
+          ⬇️ Download PDF
+        </button>
+        <button class="btn outline danger" id="resetAllBtn" title="Admin only">
+          🛠 Reset All
+        </button>
+      </div>
+    </header>
+
+    <!-- Toolbar -->
+    <section class="toolbar">
+      <!-- Seat search -->
+      <div class="search-area">
+        <label for="seatSearch">Search seat number</label>
+        <div class="search-input-wrapper">
+          <input
+            type="number"
+            id="seatSearch"
+            min="1"
+            max="500"
+            placeholder="Type seat number… e.g. 120"
+          />
+          <button class="btn small primary" id="searchBtn">Search</button>
+        </div>
+        <p class="hint">Tip: hit <strong>Enter</strong> after typing a seat number.</p>
+      </div>
+
+      <!-- Time window + filter -->
+      <div class="search-area" style="max-width: 320px;">
+        <label>View time window</label>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <div style="display:flex; flex-direction:column; gap:4px; flex:1 1 100px;">
+              <small style="font-size:11px; color:#9ca3af;">From</small>
+              <input
+                type="time"
+                id="viewStartTime"
+                value="08:00"
+                style="border-radius:999px;border:1px solid rgba(148,163,184,0.7);padding:6px 10px;background:rgba(15,23,42,0.85);color:#e5e7eb;font-size:12px;outline:none;"
+              />
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px; flex:1 1 100px;">
+              <small style="font-size:11px; color:#9ca3af;">To</small>
+              <input
+                type="time"
+                id="viewEndTime"
+                value="09:00"
+                style="border-radius:999px;border:1px solid rgba(148,163,184,0.7);padding:6px 10px;background:rgba(15,23,42,0.85);color:#e5e7eb;font-size:12px;outline:none;"
+              />
+            </div>
+          </div>
+
+          <!-- NEW: status filter -->
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <small style="font-size:11px; color:#9ca3af;">Filter by status</small>
+            <select
+              id="statusFilter"
+              style="border-radius:999px;border:1px solid rgba(148,163,184,0.7);padding:6px 10px;background:rgba(15,23,42,0.85);color:#e5e7eb;font-size:12px;outline:none;"
+            >
+              <option value="all">Show all seats</option>
+              <option value="locked">Show only locked</option>
+              <option value="available">Show only available</option>
+            </select>
+          </div>
+        </div>
+        <p class="hint">Seat status & filtering are based on this time range.</p>
+      </div>
+
+      <!-- Legend -->
+      <div class="legend">
+        <span class="legend-item">
+          <span class="legend-color available"></span>
+          White = Available
+        </span>
+        <span class="legend-item">
+          <span class="legend-color occupied"></span>
+          Violet = Occupied
+        </span>
+      </div>
+    </section>
+
+    <!-- Main Layout -->
+    <main class="layout">
+      <!-- Grid -->
+      <section class="grid-wrapper">
+        <div class="grid-header">
+          <span><strong>Seat Grid</strong> · All 500 seats</span>
+          <span>Click to lock / unlock</span>
+        </div>
+        <div id="seatsGrid" class="seats-grid"></div>
+      </section>
+
+      <!-- Seat Details Panel -->
+      <aside id="seatDetailsPanel" class="details-panel hidden">
+        <div class="details-header">
+          <div class="details-title">
+            <h2>Seat Details</h2>
+            <p id="seatDetailsSubtitle">Search a seat to view details.</p>
+          </div>
+          <div class="badge">
+            <span class="badge-dot"></span>
+            Live status
+          </div>
+        </div>
+
+        <div class="detail-row">
+          <span>Seat Number</span>
+          <strong id="detailSeatNumber">—</strong>
+        </div>
+
+        <div class="detail-row">
+          <span>Status</span>
+          <span id="detailStatusPill" class="status-pill available">
+            AVAILABLE
+          </span>
+        </div>
+
+        <div class="details-actions">
+          <button class="btn small primary" id="lockSeatBtn">Lock Seat</button>
+          <button class="btn small outline" id="unlockSeatBtn">Unlock Seat</button>
+          <button class="btn small outline" id="backToGridBtn">Back</button>
+        </div>
+
+        <div class="details-footer">
+          <span>
+            White = Available · Violet = Occupied
+          </span>
+          <small>Changes are auto-saved to this browser.</small>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmModal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h2 id="confirmTitle">Confirm action</h2>
+      <p id="confirmText">Are you sure?</p>
+      <div class="note">
+        <span class="note-dot"></span>
+        <span>This action will immediately update the seat status.</span>
+      </div>
+      <div class="modal-actions">
+        <button class="btn small outline" id="confirmNo">Cancel</button>
+        <button class="btn small danger" id="confirmYes">Yes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Booking Modal (for locking seat with employee & time slot) -->
+  <div id="bookingModal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h2 id="bookingTitle">Lock Seat</h2>
+      <p id="bookingText">Provide details to lock this seat.</p>
+
+      <form id="bookingForm">
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label for="empIdInput" style="font-size:12px; color:#e5e7eb;">
+              Employee ID <span style="color:#f97373;">*</span>
+            </label>
+            <input
+              type="text"
+              id="empIdInput"
+              maxlength="8"
+              placeholder="8-digit Employee ID"
+              style="border-radius:10px;border:1px solid rgba(148,163,184,0.7);padding:7px 10px;background:rgba(15,23,42,0.9);color:#e5e7eb;font-size:13px;outline:none;"
+              required
+            />
+            <small style="font-size:11px; color:#9ca3af;">Must be exactly 8 digits.</small>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <label for="empNameInput" style="font-size:12px; color:#e5e7eb;">
+              Employee Name (optional)
+            </label>
+            <input
+              type="text"
+              id="empNameInput"
+              placeholder="Employee Name"
+              style="border-radius:10px;border:1px solid rgba(148,163,184,0.7);padding:7px 10px;background:rgba(15,23,42,0.9);color:#e5e7eb;font-size:13px;outline:none;"
+            />
+          </div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <div style="flex:1 1 100px; display:flex; flex-direction:column; gap:4px;">
+              <label for="slotStartInput" style="font-size:12px; color:#e5e7eb;">From</label>
+              <input
+                type="time"
+                id="slotStartInput"
+                required
+                style="border-radius:10px;border:1px solid rgba(148,163,184,0.7);padding:7px 10px;background:rgba(15,23,42,0.9);color:#e5e7eb;font-size:13px;outline:none;"
+              />
+            </div>
+            <div style="flex:1 1 100px; display:flex; flex-direction:column; gap:4px;">
+              <label for="slotEndInput" style="font-size:12px; color:#e5e7eb;">To</label>
+              <input
+                type="time"
+                id="slotEndInput"
+                required
+                style="border-radius:10px;border:1px solid rgba(148,163,184,0.7);padding:7px 10px;background:rgba(15,23,42,0.9);color:#e5e7eb;font-size:13px;outline:none;"
+              />
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <div class="note" style="margin-top:8px;">
+        <span class="note-dot"></span>
+        <span>Seat will be locked only for the selected time slot.</span>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn small outline" type="button" id="bookingCancelBtn">Cancel</button>
+        <button class="btn small primary" type="button" id="bookingSaveBtn">Lock Seat</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const TOTAL_SEATS = 500;
+      const GRID_COLUMNS = 25; // for PDF layout
+      const STORAGE_KEY = "seatCheckerState";
+
+      const seatsGrid = document.getElementById("seatsGrid");
+      const totalSeatsEl = document.getElementById("totalSeats");
+      const occupiedCountEl = document.getElementById("occupiedCount");
+      const availableCountEl = document.getElementById("availableCount");
+
+      const seatSearchInput = document.getElementById("seatSearch");
+      const searchBtn = document.getElementById("searchBtn");
+      const downloadPdfBtn = document.getElementById("downloadPdfBtn");
+      const resetAllBtn = document.getElementById("resetAllBtn");
+
+      const seatDetailsPanel = document.getElementById("seatDetailsPanel");
+      const seatDetailsSubtitle = document.getElementById("seatDetailsSubtitle");
+      const detailSeatNumberEl = document.getElementById("detailSeatNumber");
+      const detailStatusPill = document.getElementById("detailStatusPill");
+      const lockSeatBtn = document.getElementById("lockSeatBtn");
+      const unlockSeatBtn = document.getElementById("unlockSeatBtn");
+      const backToGridBtn = document.getElementById("backToGridBtn");
+
+      const confirmModal = document.getElementById("confirmModal");
+      const confirmTitle = document.getElementById("confirmTitle");
+      const confirmText = document.getElementById("confirmText");
+      const confirmYes = document.getElementById("confirmYes");
+      const confirmNo = document.getElementById("confirmNo");
+
+      const viewStartInput = document.getElementById("viewStartTime");
+      const viewEndInput = document.getElementById("viewEndTime");
+      const statusFilterSelect = document.getElementById("statusFilter");
+
+      const bookingModal = document.getElementById("bookingModal");
+      const bookingTitle = document.getElementById("bookingTitle");
+      const bookingText = document.getElementById("bookingText");
+      const bookingForm = document.getElementById("bookingForm");
+      const empIdInput = document.getElementById("empIdInput");
+      const empNameInput = document.getElementById("empNameInput");
+      const slotStartInput = document.getElementById("slotStartInput");
+      const slotEndInput = document.getElementById("slotEndInput");
+      const bookingCancelBtn = document.getElementById("bookingCancelBtn");
+      const bookingSaveBtn = document.getElementById("bookingSaveBtn");
+
+      let bookings = []; // { seatNumber, empId, empName, start: "HH:MM", end: "HH:MM" }
+      let currentDetailsSeat = null;
+      let confirmAction = null; // function to run on confirm
+
+      let viewStartTime = "08:00";
+      let viewEndTime = "09:00";
+      let statusFilter = "all"; // "all" | "locked" | "available"
+
+      // ---- Local Storage ----
+      function loadState() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        try {
+          const data = JSON.parse(raw);
+
+          // Backward compatibility: old format was array of seat numbers
+          if (Array.isArray(data)) {
+            bookings = data.map((n) => ({
+              seatNumber: n,
+              empId: "",
+              empName: "",
+              start: "00:00",
+              end: "23:59",
+            }));
+          } else if (data && Array.isArray(data.bookings)) {
+            bookings = data.bookings;
+          }
+        } catch (e) {
+          console.warn("Failed to parse seat state:", e);
+          bookings = [];
+        }
+      }
+
+      function saveState() {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({ bookings })
+        );
+      }
+
+      // ---- Time helpers ----
+      function timeStrToMinutes(t) {
+        if (!t) return 0;
+        const [h, m] = t.split(":").map(Number);
+        return h * 60 + (m || 0);
+      }
+
+      function rangesOverlap(startA, endA, startB, endB) {
+        return startA < endB && startB < endA;
+      }
+
+      function isSeatOccupiedInView(seatNumber) {
+        const viewStart = timeStrToMinutes(viewStartTime);
+        const viewEnd = timeStrToMinutes(viewEndTime);
+        return bookings.some((b) => {
+          if (b.seatNumber !== seatNumber) return false;
+          const bs = timeStrToMinutes(b.start);
+          const be = timeStrToMinutes(b.end);
+          return rangesOverlap(viewStart, viewEnd, bs, be);
+        });
+      }
+
+      function getFirstBookingInView(seatNumber) {
+        const viewStart = timeStrToMinutes(viewStartTime);
+        const viewEnd = timeStrToMinutes(viewEndTime);
+        return bookings.find((b) => {
+          if (b.seatNumber !== seatNumber) return false;
+          const bs = timeStrToMinutes(b.start);
+          const be = timeStrToMinutes(b.end);
+          return rangesOverlap(viewStart, viewEnd, bs, be);
+        });
+      }
+
+      function getOccupiedSeatSetForView() {
+        const viewStart = timeStrToMinutes(viewStartTime);
+        const viewEnd = timeStrToMinutes(viewEndTime);
+        const set = new Set();
+        bookings.forEach((b) => {
+          const bs = timeStrToMinutes(b.start);
+          const be = timeStrToMinutes(b.end);
+          if (rangesOverlap(viewStart, viewEnd, bs, be)) {
+            set.add(b.seatNumber);
+          }
+        });
+        return set;
+      }
+
+      // ---- UI helpers ----
+      function createSeatElement(seatNumber) {
+        const btn = document.createElement("button");
+        btn.className = "seat";
+        btn.dataset.seatNumber = seatNumber;
+        btn.textContent = seatNumber;
+        if (isSeatOccupiedInView(seatNumber)) {
+          btn.classList.add("occupied");
+        }
+        btn.addEventListener("click", () => handleSeatClick(seatNumber));
+        return btn;
+      }
+
+      function buildGrid() {
+        seatsGrid.innerHTML = "";
+        for (let i = 1; i <= TOTAL_SEATS; i++) {
+          seatsGrid.appendChild(createSeatElement(i));
+        }
+      }
+
+      function getSeatElement(seatNumber) {
+        return seatsGrid.querySelector(
+          '.seat[data-seat-number="' + seatNumber + '"]'
+        );
+      }
+
+      function updateSeatUI(seatNumber) {
+        const el = getSeatElement(seatNumber);
+        if (!el) return;
+
+        const isOccupied = isSeatOccupiedInView(seatNumber);
+
+        // base occupied / available styling
+        if (isOccupied) {
+          el.classList.add("occupied");
+        } else {
+          el.classList.remove("occupied");
+        }
+
+        // status filter-based visibility
+        el.classList.remove("seat--hidden");
+        if (statusFilter === "locked" && !isOccupied) {
+          el.classList.add("seat--hidden");
+        } else if (statusFilter === "available" && isOccupied) {
+          el.classList.add("seat--hidden");
+        }
+      }
+
+      function refreshAllSeatsUI() {
+        for (let i = 1; i <= TOTAL_SEATS; i++) {
+          updateSeatUI(i);
+        }
+      }
+
+      function updateStats() {
+        const occupiedSet = getOccupiedSeatSetForView();
+        const occupied = occupiedSet.size;
+        const available = TOTAL_SEATS - occupied;
+        occupiedCountEl.textContent = occupied;
+        availableCountEl.textContent = available;
+        totalSeatsEl.textContent = TOTAL_SEATS;
+      }
+
+      function showDetailsPanel(seatNumber) {
+        currentDetailsSeat = seatNumber;
+        const booking = getFirstBookingInView(seatNumber);
+        const isOccupied = !!booking;
+
+        detailSeatNumberEl.textContent = seatNumber;
+
+        if (isOccupied) {
+          const who = booking.empId
+            ? `Employee ID ${booking.empId}${booking.empName ? " – " + booking.empName : ""}`
+            : "Unknown employee";
+          seatDetailsSubtitle.textContent =
+            `Locked from ${booking.start} to ${booking.end} by ${who}.`;
+        } else {
+          seatDetailsSubtitle.textContent =
+            `Seat ${seatNumber} is available in the selected time window (${viewStartTime}–${viewEndTime}).`;
+        }
+
+        detailStatusPill.textContent = isOccupied ? "LOCKED" : "AVAILABLE";
+        detailStatusPill.classList.toggle("occupied", isOccupied);
+        detailStatusPill.classList.toggle("available", !isOccupied);
+
+        seatDetailsPanel.classList.remove("hidden");
+      }
+
+      function hideDetailsPanel() {
+        seatDetailsPanel.classList.add("hidden");
+        currentDetailsSeat = null;
+      }
+
+      function focusSeat(seatNumber) {
+        const el = getSeatElement(seatNumber);
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+        el.classList.add("seat--highlight");
+        setTimeout(() => {
+          el.classList.remove("seat--highlight");
+        }, 1600);
+      }
+
+      function openConfirm({ title, text, onConfirm }) {
+        confirmTitle.textContent = title;
+        confirmText.textContent = text;
+        confirmAction = onConfirm;
+        confirmModal.classList.add("visible");
+      }
+
+      function closeConfirm() {
+        confirmModal.classList.remove("visible");
+        confirmAction = null;
+      }
+
+      // ---- Booking modal helpers ----
+      function openBookingModal(seatNumber) {
+        currentDetailsSeat = seatNumber;
+        bookingTitle.textContent = `Lock Seat ${seatNumber}`;
+        bookingText.textContent = `Enter details to lock seat ${seatNumber} for a time slot.`;
+
+        // Pre-fill slot with current view window
+        slotStartInput.value = viewStartTime;
+        slotEndInput.value = viewEndTime;
+
+        // Clear previous values
+        empIdInput.value = "";
+        empNameInput.value = "";
+        bookingModal.classList.add("visible");
+      }
+
+      function closeBookingModal() {
+        bookingModal.classList.remove("visible");
+      }
+
+      function validateBookingForm() {
+        const empId = empIdInput.value.trim();
+        const empName = empNameInput.value.trim();
+        const start = slotStartInput.value;
+        const end = slotEndInput.value;
+
+        if (!/^\d{8}$/.test(empId)) {
+          alert("Employee ID must be exactly 8 digits.");
+          empIdInput.focus();
+          return null;
+        }
+
+        if (!start || !end) {
+          alert("Please select both start and end time.");
+          return null;
+        }
+
+        const startMin = timeStrToMinutes(start);
+        const endMin = timeStrToMinutes(end);
+        if (endMin <= startMin) {
+          alert("End time must be later than start time.");
+          return null;
+        }
+
+        // Check for overlapping booking on same seat
+        const seatNumber = currentDetailsSeat;
+        const overlap = bookings.some((b) => {
+          if (b.seatNumber !== seatNumber) return false;
+          const bs = timeStrToMinutes(b.start);
+          const be = timeStrToMinutes(b.end);
+          return rangesOverlap(startMin, endMin, bs, be);
+        });
+        if (overlap) {
+          alert("This seat is already locked for an overlapping time slot.");
+          return null;
+        }
+
+        return { empId, empName, start, end };
+      }
+
+      // ---- Seat actions ----
+      function lockSeat(seatNumber, bookingData) {
+        if (seatNumber < 1 || seatNumber > TOTAL_SEATS) return;
+        if (!bookingData) return;
+
+        bookings.push({
+          seatNumber,
+          empId: bookingData.empId,
+          empName: bookingData.empName,
+          start: bookingData.start,
+          end: bookingData.end,
+        });
+
+        saveState();
+        updateSeatUI(seatNumber);
+        updateStats();
+        if (currentDetailsSeat === seatNumber) {
+          showDetailsPanel(seatNumber);
+        }
+      }
+
+      function unlockSeatForCurrentView(seatNumber) {
+        if (seatNumber < 1 || seatNumber > TOTAL_SEATS) return;
+
+        const viewStart = timeStrToMinutes(viewStartTime);
+        const viewEnd = timeStrToMinutes(viewEndTime);
+
+        bookings = bookings.filter((b) => {
+          if (b.seatNumber !== seatNumber) return true;
+          const bs = timeStrToMinutes(b.start);
+          const be = timeStrToMinutes(b.end);
+          // Remove only bookings that overlap the current view window
+          return !rangesOverlap(viewStart, viewEnd, bs, be);
+        });
+
+        saveState();
+        updateSeatUI(seatNumber);
+        updateStats();
+        if (currentDetailsSeat === seatNumber) {
+          showDetailsPanel(seatNumber);
+        }
+      }
+
+      function handleSeatClick(seatNumber) {
+        const isOccupied = isSeatOccupiedInView(seatNumber);
+        if (!isOccupied) {
+          // Lock via form
+          openBookingModal(seatNumber);
+        } else {
+          // Confirm unlock for current view window
+          openConfirm({
+            title: "Unlock Seat " + seatNumber + "?",
+            text:
+              "This will remove bookings for seat " +
+              seatNumber +
+              " that overlap the current time window (" +
+              viewStartTime +
+              "–" +
+              viewEndTime +
+              ").",
+            onConfirm: () => {
+              unlockSeatForCurrentView(seatNumber);
+            },
+          });
+        }
+      }
+
+      // ---- Search ----
+      function parseSeatNumberFromInput() {
+        const raw = seatSearchInput.value.trim();
+        const seatNum = Number(raw);
+        if (!raw || Number.isNaN(seatNum)) return null;
+        if (seatNum < 1 || seatNum > TOTAL_SEATS) return null;
+        return seatNum;
+      }
+
+      function handleSearch() {
+        const seatNum = parseSeatNumberFromInput();
+        if (!seatNum) {
+          seatSearchInput.focus();
+          seatSearchInput.classList.add("input-error");
+          seatDetailsSubtitle.textContent =
+            "Enter a seat number between 1 and " + TOTAL_SEATS + ".";
+          setTimeout(() => {
+            seatSearchInput.classList.remove("input-error");
+          }, 1000);
+          return;
+        }
+        focusSeat(seatNum);
+        showDetailsPanel(seatNum);
+      }
+
+      // ---- PDF Generation ----
+      async function generatePdf() {
+        const jsPdfLib = window.jspdf;
+        if (!jsPdfLib || !jsPdfLib.jsPDF) {
+          alert("jsPDF failed to load. Check your internet connection.");
+          return;
+        }
+
+        const { jsPDF } = jsPdfLib;
+        const doc = new jsPDF("p", "pt", "a4"); // portrait, points
+
+        // Layout settings
+        const marginLeft = 30;
+        const marginTop = 40;
+        const seatSize = 18; // width & height of seat rectangles
+        const cols = GRID_COLUMNS; // 25
+        const totalSeats = TOTAL_SEATS;
+        const occupiedSet = getOccupiedSeatSetForView();
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(14);
+        doc.setTextColor(230, 232, 240);
+        doc.text("SEAT CHECKER – Seat Grid", marginLeft, 24);
+
+        // Draw seats as rectangles with current color (based on current view window)
+        doc.setFontSize(6);
+        for (let i = 1; i <= totalSeats; i++) {
+          const index = i - 1;
+          const row = Math.floor(index / cols);
+          const col = index % cols;
+
+          const x = marginLeft + col * seatSize;
+          const y = marginTop + row * seatSize;
+
+          const isOccupied = occupiedSet.has(i);
+
+          if (isOccupied) {
+            doc.setFillColor(139, 92, 246); // violet
+            doc.setTextColor(255, 255, 255);
+          } else {
+            doc.setFillColor(255, 255, 255);
+            doc.setTextColor(31, 41, 55);
+          }
+          doc.setDrawColor(148, 163, 184);
+
+          doc.roundedRect(
+            x,
+            y,
+            seatSize - 3,
+            seatSize - 3,
+            3,
+            3,
+            "FD" // fill & draw
+          );
+
+          // Seat number (tiny)
+          const textX = x + (seatSize - 3) / 2;
+          const textY = y + (seatSize - 3) / 2 + 1;
+          doc.text(String(i), textX, textY, { align: "center", baseline: "middle" });
+        }
+
+        // Legend on grid page
+        doc.setFontSize(9);
+        doc.setTextColor(200, 210, 230);
+        const legendY = marginTop + seatSize * Math.ceil(totalSeats / cols) + 20;
+        doc.text("Legend:", marginLeft, legendY);
+        // Available
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(148, 163, 184);
+        doc.rect(marginLeft + 46, legendY - 8, 10, 10, "FD");
+        doc.text("Available", marginLeft + 60, legendY);
+        // Occupied
+        doc.setFillColor(139, 92, 246);
+        doc.rect(marginLeft + 124, legendY - 8, 10, 10, "FD");
+        doc.text("Occupied", marginLeft + 138, legendY);
+
+        // Summary page
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.setTextColor(230, 232, 240);
+        doc.text("SEAT CHECKER – Summary", 40, 60);
+
+        const total = TOTAL_SEATS;
+        const occupied = occupiedSet.size;
+        const available = total - occupied;
+        const now = new Date();
+        const dateStr = now.toLocaleDateString();
+        const timeStr = now.toLocaleTimeString();
+
+        doc.setFontSize(12);
+        doc.setTextColor(209, 213, 219);
+
+        const summaryLines = [
+          "Total seats: " + total,
+          "Number of occupied seats (for " + viewStartTime + "–" + viewEndTime + "): " + occupied,
+          "Number of unoccupied seats (for " + viewStartTime + "–" + viewEndTime + "): " + available,
+          "Current view window: " + viewStartTime + "–" + viewEndTime,
+          "Generated on: " + dateStr,
+          "At time: " + timeStr,
+        ];
+
+        let y = 100;
+        summaryLines.forEach((line) => {
+          doc.text(line, 40, y);
+          y += 18;
+        });
+
+        doc.save("seat-checker.pdf");
+      }
+
+      // ---- Reset ----
+      function handleResetAll() {
+        openConfirm({
+          title: "Reset all seats?",
+          text: "This will remove all bookings and mark all seats as available for all time slots.",
+          onConfirm: () => {
+            bookings = [];
+            refreshAllSeatsUI();
+            updateStats();
+            saveState();
+            hideDetailsPanel();
+          },
+        });
+      }
+
+      // ---- Time window change ----
+      function handleViewTimeChange() {
+        const start = viewStartInput.value || "08:00";
+        const end = viewEndInput.value || "09:00";
+        if (timeStrToMinutes(end) <= timeStrToMinutes(start)) {
+          alert("View 'To' time must be later than 'From' time.");
+          // revert to previous if invalid
+          viewStartInput.value = viewStartTime;
+          viewEndInput.value = viewEndTime;
+          return;
+        }
+        viewStartTime = start;
+        viewEndTime = end;
+        refreshAllSeatsUI();
+        updateStats();
+        if (currentDetailsSeat) {
+          showDetailsPanel(currentDetailsSeat);
+        }
+      }
+
+      // ---- Status filter change ----
+      function handleStatusFilterChange() {
+        statusFilter = statusFilterSelect.value; // "all" | "locked" | "available"
+        refreshAllSeatsUI();
+      }
+
+      // ---- Event wiring ----
+      searchBtn.addEventListener("click", handleSearch);
+      seatSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          handleSearch();
+        }
+      });
+
+      lockSeatBtn.addEventListener("click", () => {
+        if (!currentDetailsSeat) return;
+        openBookingModal(currentDetailsSeat);
+      });
+
+      unlockSeatBtn.addEventListener("click", () => {
+        if (!currentDetailsSeat) return;
+        const seatNumber = currentDetailsSeat;
+        if (!isSeatOccupiedInView(seatNumber)) return;
+
+        openConfirm({
+          title: "Unlock Seat " + seatNumber + "?",
+          text:
+            "This will remove bookings for seat " +
+            seatNumber +
+            " overlapping the current time window (" +
+            viewStartTime +
+            "–" +
+            viewEndTime +
+            ").",
+          onConfirm: () => unlockSeatForCurrentView(seatNumber),
+        });
+      });
+
+      backToGridBtn.addEventListener("click", hideDetailsPanel);
+
+      confirmNo.addEventListener("click", closeConfirm);
+      confirmModal.addEventListener("click", (e) => {
+        if (e.target === confirmModal || e.target.classList.contains("modal-backdrop")) {
+          closeConfirm();
+        }
+      });
+      confirmYes.addEventListener("click", () => {
+        if (typeof confirmAction === "function") {
+          confirmAction();
+        }
+        closeConfirm();
+      });
+
+      downloadPdfBtn.addEventListener("click", generatePdf);
+      resetAllBtn.addEventListener("click", handleResetAll);
+
+      bookingCancelBtn.addEventListener("click", () => {
+        closeBookingModal();
+      });
+
+      bookingModal.addEventListener("click", (e) => {
+        if (e.target === bookingModal || e.target.classList.contains("modal-backdrop")) {
+          closeBookingModal();
+        }
+      });
+
+      bookingSaveBtn.addEventListener("click", () => {
+        const data = validateBookingForm();
+        if (!data) return;
+        const seatNumber = currentDetailsSeat;
+        lockSeat(seatNumber, data);
+        closeBookingModal();
+      });
+
+      viewStartInput.addEventListener("change", handleViewTimeChange);
+      viewEndInput.addEventListener("change", handleViewTimeChange);
+      statusFilterSelect.addEventListener("change", handleStatusFilterChange);
+
+      // ---- Init ----
+      loadState();
+      buildGrid();
+      refreshAllSeatsUI();
+      updateStats();
+    })();
+  </script>
+</body>
+</html>
+``
